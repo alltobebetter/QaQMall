@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>商品管理 - QaQMall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-gray': {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-custom-gray-50 min-h-screen">
+    <div id="app">
+        <nav class="bg-white border-b border-custom-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center space-x-8">
+                        <h1 class="text-xl font-light text-custom-gray-800 tracking-wide">QaQMall</h1>
+                        <p class="text-custom-gray-500 text-sm tracking-wide">商品管理</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button @click="showAddDialog = true" 
+                            class="px-6 py-2 bg-custom-gray-800 text-white hover:bg-custom-gray-700 transition-colors">
+                            添加商品
+                        </button>
+                        <button @click="logout" 
+                            class="text-custom-gray-500 hover:text-custom-gray-800">
+                            退出登录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-8 flex gap-4 bg-white p-6 border border-custom-gray-200 shadow-sm">
+                <input 
+                    type="text"
+                    v-model="searchQuery"
+                    @keyup.enter="searchProducts"
+                    placeholder="搜索商品..."
+                    class="flex-1 max-w-md px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none">
+                <button 
+                    @click="searchProducts"
+                    class="px-6 py-2.5 bg-custom-gray-800 text-white hover:bg-custom-gray-700 transition-colors">
+                    搜索
+                </button>
+                <button 
+                    @click="loadProducts"
+                    class="px-6 py-2.5 border-2 border-custom-gray-800 text-custom-gray-800 hover:bg-custom-gray-800 hover:text-white transition-colors">
+                    重置
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="product in products" :key="product.ID" 
+                    class="bg-white p-6 border border-custom-gray-200 hover:border-custom-gray-300 transition-colors">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-lg font-medium text-custom-gray-800">{{ product.name }}</h3>
+                        <div class="space-x-2">
+                            <button @click="editProduct(product)" 
+                                class="text-custom-gray-600 hover:text-custom-gray-800 transition-colors">
+                                编辑
+                            </button>
+                            <button @click="confirmDelete(product)" 
+                                class="text-red-600 hover:text-red-800 transition-colors">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-custom-gray-600 mb-4 line-clamp-2">{{ product.description }}</p>
+                    <p class="text-2xl font-light mb-2 text-custom-gray-800">￥{{ product.price.toFixed(2) }}</p>
+                    <p class="text-custom-gray-600 mb-4">库存: {{ product.stock }}件</p>
+                    <div class="space-x-2">
+                        <span 
+                            v-for="category in product.categories.split(',')" 
+                            :key="category"
+                            class="inline-block px-2.5 py-1 text-sm border border-custom-gray-200 text-custom-gray-600 bg-custom-gray-50">
+                            {{ category }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-center">
+                <el-pagination
+                    v-model:current-page="currentPage"
+                    v-model:page-size="pageSize"
+                    :total="total"
+                    :page-sizes="[12, 24, 36, 48]"
+                    layout="total, sizes, prev, pager, next"
+                    class="!text-custom-gray-600">
+                </el-pagination>
+            </div>
+        </main>
+
+        <el-dialog
+            v-model="showAddDialog"
+            :title="editingProduct ? '编辑商品' : '添加商品'"
+            width="500px"
+            class="!bg-white">
+            <div class="space-y-6">
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-custom-gray-700">商品名称</label>
+                    <input 
+                        type="text"
+                        v-model="productForm.name"
+                        class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-custom-gray-700">商品描述</label>
+                    <textarea 
+                        v-model="productForm.description"
+                        rows="3"
+                        class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-custom-gray-700">价格</label>
+                        <input 
+                            type="number"
+                            v-model="productForm.price"
+                            step="0.01"
+                            class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-custom-gray-700">库存</label>
+                        <input 
+                            type="number"
+                            v-model="productForm.stock"
+                            class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none">
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-custom-gray-700">分类</label>
+                    <input 
+                        type="text"
+                        v-model="productForm.categories"
+                        placeholder="使用逗号分隔多个分类"
+                        class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none">
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex justify-end space-x-4">
+                    <button 
+                        @click="showAddDialog = false"
+                        class="px-6 py-2.5 border border-custom-gray-300 text-custom-gray-600 hover:border-custom-gray-500 hover:text-custom-gray-800 transition-colors">
+                        取消
+                    </button>
+                    <button 
+                        @click="submitProduct"
+                        :disabled="loading"
+                        class="px-6 py-2.5 bg-custom-gray-800 text-white hover:bg-custom-gray-700 transition-colors disabled:bg-custom-gray-400">
+                        {{ loading ? '提交中...' : '确定' }}
+                    </button>
+                </div>
+            </template>
+        </el-dialog>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue
+        const { ElMessage, ElMessageBox } = ElementPlus
+
+        const app = createApp({
+            setup() {
+                const API_BASE_URL = 'http://localhost:8888'
+                const loading = ref(false)
+                const products = ref([])
+                const total = ref(0)
+                const currentPage = ref(1)
+                const pageSize = ref(12)
+                const searchQuery = ref('')
+                const showAddDialog = ref(false)
+                const editingProduct = ref(null)
+                
+                const checkAuth = () => {
+                    const userId = localStorage.getItem('user_id')
+                    const userRole = localStorage.getItem('user_role')
+                    
+                    if (!userId) {
+                        window.location.href = 'index.html'
+                        return
+                    }
+
+                    if (userRole !== '1') {
+                        window.location.href = 'mall.html'
+                    }
+                }
+                
+                const productForm = reactive({
+                    name: '',
+                    description: '',
+                    price: 0,
+                    stock: 0,
+                    categories: ''
+                })
+
+                const loadProducts = async () => {
+                    try {
+                        const response = await fetch(
+                            `${API_BASE_URL}/products?page=${currentPage.value}&pageSize=${pageSize.value}`
+                        )
+                        const data = await response.json()
+                        products.value = data.products
+                        total.value = data.total
+                    } catch (error) {
+                        ElMessage.error('加载商品失败')
+                        console.error('加载商品失败:', error)
+                    }
+                }
+
+                const searchProducts = async () => {
+                    if (!searchQuery.value) {
+                        loadProducts()
+                        return
+                    }
+
+                    try {
+                        const response = await fetch(
+                            `${API_BASE_URL}/products/search?q=${encodeURIComponent(searchQuery.value)}`
+                        )
+                        const data = await response.json()
+                        products.value = data.results
+                        total.value = data.results.length
+                    } catch (error) {
+                        ElMessage.error('搜索商品失败')
+                        console.error('搜索商品失败:', error)
+                    }
+                }
+
+                const editProduct = (product) => {
+                    editingProduct.value = product
+                    Object.assign(productForm, product)
+                    showAddDialog.value = true
+                }
+
+                const resetForm = () => {
+                    productForm.name = ''
+                    productForm.description = ''
+                    productForm.price = 0
+                    productForm.stock = 0
+                    productForm.categories = ''
+                    editingProduct.value = null
+                }
+
+                const submitProduct = async () => {
+                    if (!productForm.name || !productForm.description || productForm.price <= 0 || productForm.stock < 0) {
+                        ElMessage.error('请填写完整的商品信息')
+                        return
+                    }
+
+                    loading.value = true
+                    try {
+                        const url = editingProduct.value
+                            ? `${API_BASE_URL}/products/${editingProduct.value.ID}`
+                            : `${API_BASE_URL}/products`
+                        
+                        const method = editingProduct.value ? 'PUT' : 'POST'
+                        
+                        const response = await fetch(url, {
+                            method,
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(productForm)
+                        })
+
+                        if (response.ok) {
+                            ElMessage.success(editingProduct.value ? '更新成功' : '添加成功')
+                            showAddDialog.value = false
+                            resetForm()
+                            loadProducts()
+                        } else {
+                            const data = await response.json()
+                            ElMessage.error(data.message || '操作失败')
+                        }
+                    } catch (error) {
+                        ElMessage.error('操作失败')
+                        console.error('提交商品失败:', error)
+                    } finally {
+                        loading.value = false
+                    }
+                }
+
+                const confirmDelete = (product) => {
+                    ElMessageBox.confirm(
+                        '确定要删除该商品吗？',
+                        '警告',
+                        {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning',
+                        }
+                    ).then(() => {
+                        deleteProduct(product)
+                    }).catch(() => {})
+                }
+
+                const deleteProduct = async (product) => {
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/products/${product.ID}`, {
+                            method: 'DELETE'
+                        })
+
+                        if (response.ok) {
+                            ElMessage.success('删除成功')
+                            loadProducts()
+                        } else {
+                            ElMessage.error('删除失败')
+                        }
+                    } catch (error) {
+                        ElMessage.error('删除失败')
+                        console.error('删除商品失败:', error)
+                    }
+                }
+
+                const logout = () => {
+                    localStorage.removeItem('user_id')
+                    localStorage.removeItem('user_role')
+                    window.location.href = 'index.html'
+                }
+
+                onMounted(() => {
+                    checkAuth()
+                    loadProducts()
+                })
+
+                return {
+                    loading,
+                    products,
+                    total,
+                    currentPage,
+                    pageSize,
+                    searchQuery,
+                    showAddDialog,
+                    editingProduct,
+                    productForm,
+                    searchProducts,
+                    loadProducts,
+                    editProduct,
+                    submitProduct,
+                    confirmDelete,
+                    logout
+                }
+            }
+        })
+
+        app.use(ElementPlus)
+        app.mount('#app')
+    </script>
+</body>
+</html> 

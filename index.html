@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 / 注册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-gray': {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-custom-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="w-full max-w-5xl">
+        <div class="bg-white">
+            <div class="bg-custom-gray-800 text-white py-12 px-8 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-custom-gray-900 to-custom-gray-800 opacity-50"></div>
+                <div class="relative">
+                    <h2 class="text-3xl font-light text-center tracking-wide">QaQMall</h2>
+                    <p class="text-custom-gray-300 text-center mt-2 text-sm tracking-wider">电商管理系统</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-custom-gray-200">
+                <div class="p-12">
+                    <h3 class="text-xl font-light mb-8 text-center text-custom-gray-800 tracking-wide">登录</h3>
+                    <div class="space-y-6">
+                        <div class="space-y-1">
+                            <label class="block text-sm font-medium text-custom-gray-700">用户名</label>
+                            <input 
+                                type="text" 
+                                v-model="loginForm.username"
+                                class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none transition-colors"
+                                placeholder="请输入用户名">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-sm font-medium text-custom-gray-700">密码</label>
+                            <input 
+                                type="password" 
+                                v-model="loginForm.password"
+                                class="w-full px-4 py-2.5 bg-custom-gray-50 border border-custom-gray-200 focus:border-custom-gray-500 outline-none transition-colors"
+                                placeholder="请输入密码">
+                        </div>
+                        <button 
+                            @click="handleLogin"
+                            :disabled="loading"
+                            class="w-full bg-custom-gray-800 text-white py-2.5 px-4 hover:bg-custom-gray-700 transition-colors disabled:bg-custom-gray-400 disabled:cursor-not-allowed mt-8">
+                            {{ loading ? '登录中...' : '登录' }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-12 bg-custom-gray-50">
+                    <h3 class="text-xl font-light mb-8 text-center text-custom-gray-800 tracking-wide">注册</h3>
+                    <div class="space-y-6">
+                        <div class="space-y-1">
+                            <label class="block text-sm font-medium text-custom-gray-700">用户名</label>
+                            <input 
+                                type="text" 
+                                v-model="registerForm.username"
+                                class="w-full px-4 py-2.5 bg-white border border-custom-gray-200 focus:border-custom-gray-500 outline-none transition-colors"
+                                placeholder="请输入用户名">
+                            <p class="mt-1.5 text-xs text-custom-gray-500">用户名长度在 3-20 个字符之间</p>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-sm font-medium text-custom-gray-700">密码</label>
+                            <input 
+                                type="password" 
+                                v-model="registerForm.password"
+                                class="w-full px-4 py-2.5 bg-white border border-custom-gray-200 focus:border-custom-gray-500 outline-none transition-colors"
+                                placeholder="请输入密码">
+                            <p class="mt-1.5 text-xs text-custom-gray-500">密码长度在 6-20 个字符之间</p>
+                        </div>
+                        <button 
+                            @click="handleRegister"
+                            :disabled="loading"
+                            class="w-full border-2 border-custom-gray-800 text-custom-gray-800 py-2.5 px-4 hover:bg-custom-gray-800 hover:text-white transition-colors disabled:bg-custom-gray-100 disabled:border-custom-gray-300 disabled:text-custom-gray-400 disabled:cursor-not-allowed mt-8">
+                            {{ loading ? '注册中...' : '注册' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-center text-sm text-custom-gray-500">
+            © 2025 QaQMall. All rights reserved.
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue
+        const { ElMessage } = ElementPlus
+
+        const app = createApp({
+            setup() {
+                const API_BASE_URL = 'http://localhost:8888'
+                const loading = ref(false)
+                
+                const loginForm = reactive({
+                    username: '',
+                    password: ''
+                })
+
+                const registerForm = reactive({
+                    username: '',
+                    password: ''
+                })
+
+                const checkAuth = () => {
+                    const userId = localStorage.getItem('user_id')
+                    if (userId) {
+                        window.location.href = 'mall.html'
+                    }
+                }
+
+                onMounted(() => {
+                    checkAuth()
+                })
+
+                const validateForm = (form) => {
+                    if (!form.username || form.username.length < 3 || form.username.length > 20) {
+                        ElMessage.error('用户名长度必须在 3-20 个字符之间')
+                        return false
+                    }
+                    if (!form.password || form.password.length < 6 || form.password.length > 20) {
+                        ElMessage.error('密码长度必须在 6-20 个字符之间')
+                        return false
+                    }
+                    return true
+                }
+
+                const handleLogin = async () => {
+                    if (!validateForm(loginForm)) return
+
+                    try {
+                        loading.value = true
+                        const response = await fetch(`${API_BASE_URL}/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(loginForm)
+                        })
+
+                        const data = await response.json()
+
+                        if (response.ok) {
+                            ElMessage.success('登录成功')
+                            localStorage.setItem('user_id', data.user_id)
+                            localStorage.setItem('user_role', data.role)
+                            window.location.href = 'mall.html'
+                        } else {
+                            ElMessage.error(data.message || '登录失败')
+                        }
+                    } catch (error) {
+                        ElMessage.error('服务器错误，请稍后重试')
+                        console.error('登录失败:', error)
+                    } finally {
+                        loading.value = false
+                    }
+                }
+
+                const handleRegister = async () => {
+                    if (!validateForm(registerForm)) return
+
+                    try {
+                        loading.value = true
+                        const response = await fetch(`${API_BASE_URL}/register`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(registerForm)
+                        })
+
+                        const data = await response.json()
+
+                        if (response.ok) {
+                            ElMessage.success('注册成功，请登录')
+                            registerForm.username = ''
+                            registerForm.password = ''
+                        } else {
+                            ElMessage.error(data.message || '注册失败')
+                        }
+                    } catch (error) {
+                        ElMessage.error('服务器错误，请稍后重试')
+                        console.error('注册失败:', error)
+                    } finally {
+                        loading.value = false
+                    }
+                }
+
+                return {
+                    loading,
+                    loginForm,
+                    registerForm,
+                    handleLogin,
+                    handleRegister
+                }
+            }
+        })
+
+        app.use(ElementPlus)
+        app.mount('#app')
+    </script>
+</body>
+</html>
